@@ -45,6 +45,12 @@ Previously computed results for these parameters:
 
 The QROM calculation uses query count and depth `2^64`, a 512-bit message space, assumed PRF advantage `2^-320`, and zero additional runtime-loss bits. `PASS` requires the target score and a two-bit reserve on each of the four advantage contributions.
 
+In the returned `qrom` dictionary, `b_qrom` is the conditional score and
+`lg_adv` contains the log2 advantage contributions. `b_lat_adj` and `b_df_adj`
+include reduction losses; `b_lat_req`, `b_df_req`, `b_prf_req`, and `b_msg_req`
+give required bit exponents or lengths with the reserve. `target_ok` checks
+the score against `b_tgt`; `reserve_ok` checks all four term budgets.
+
 ## Estimator options
 
 The lattice options are set in [MLWE_security.py](MLWE_security.py):
@@ -70,5 +76,4 @@ The suite runner also supports these function arguments:
 | `failure_only` | `False` | Compute failure probability and sizes without lattice estimates. |
 | `search_compression` | `False` | Search compression settings in ciphertext-size order. |
 | `sensitivity` | `False` | Print conditional scores for several query/depth budgets. |
-
 

@@ -1,6 +1,5 @@
 import math
 
-
 QROM = {
     "log2_queries": 64,          # lg(Q): total oracle queries; Q is not modulus q.
     "log2_depth": 64,            # lg(D): sequential query depth, D <= Q.
@@ -31,38 +30,37 @@ def factors(lg_q, lg_d, b_msg):
         raise ValueError("Require 1 <= depth <= total queries and a nonempty message space")
     lg_sqrt = 0.5 * (lg_d + log2_sum(math.log2(7) + lg_d, math.log2(3)))  # lg(sqrt(D(7D+3))).
     return {
-        "log2_lattice_multiplier": 2 + lg_sqrt,  # lg(4 sqrt(D(7D+3))).
-        "log2_failure_multiplier": log2_sum(4 + 2 * log2_sum(2 + lg_q, 0),
+        "lg_lat_mult": 2 + lg_sqrt,  # lg(4 sqrt(D(7D+3))); lattice multiplier.
+        "lg_df_mult": log2_sum(4 + 2 * log2_sum(2 + lg_q, 0),
                                             2 + lg_d / 2),  # lg(16(4Q+1)^2 + 4 sqrt(D)).
-        "log2_finite_space_term": 4 + lg_sqrt + log2_sum(3 + lg_q, 0) - b_msg,
+        "lg_space": 4 + lg_sqrt + log2_sum(3 + lg_q, 0) - b_msg,
         # Last term: lg(16 sqrt(D(7D+3)) (8Q+1) / 2**b_msg).
     }
 
 
 def account(b_lat, lg_df, b_tgt, cfg):
-    """Apply the QROM reduction specified in the report"""
     red = factors(cfg["log2_queries"], cfg["log2_depth"], cfg["message_bits"])  # Reduction factors.
     lg_adv = {  # Base-2 logarithms of the four advantage contributions.
-        "lattice": red["log2_lattice_multiplier"] + cfg["runtime_loss_bits"] - b_lat,
-        "failure": red["log2_failure_multiplier"] + lg_df,
+        "lattice": red["lg_lat_mult"] + cfg["runtime_loss_bits"] - b_lat,
+        "failure": red["lg_df_mult"] + lg_df,
         "prf_assumption": -cfg["assumed_prf_advantage_bits"],
-        "finite_space": red["log2_finite_space_term"],
+        "finite_space": red["lg_space"],
     }
     b_sec = -log2_sum(*lg_adv.values())  # Conditional security exponent of the total advantage.
+    b_req = b_tgt + 2  # Four terms <= 2**(-b_req) sum to at most 2**(-b_tgt).
     return {
-        **red, "log2_terms": lg_adv,
-        "adjusted_lattice_bits": -lg_adv["lattice"],
-        "adjusted_failure_bits": -lg_adv["failure"],
-        "conditional_accounting_bits": b_sec,
-        "target": b_tgt, "meets_target_conditionally": b_sec >= b_tgt,
-        # Four terms <= 2**(-b_tgt-2) sum to at most 2**(-b_tgt).
-        "all_four_terms_have_two_bit_reserve": all(lg_eps <= -b_tgt-2 for lg_eps in lg_adv.values()),
-        "required_lattice_bits_with_reserve": b_tgt + 2 + red["log2_lattice_multiplier"]
-                                               + cfg["runtime_loss_bits"],
-        "required_failure_exponent_with_reserve": b_tgt + 2 + red["log2_failure_multiplier"],
-        "required_prf_advantage_bits_with_reserve": b_tgt + 2,
-        "minimum_message_bits_with_reserve": math.ceil(
-            cfg["message_bits"] + red["log2_finite_space_term"] + b_tgt + 2),
+        **red,
+        "lg_adv": lg_adv,
+        "b_lat_adj": -lg_adv["lattice"],
+        "b_df_adj": -lg_adv["failure"],
+        "b_qrom": b_sec,
+        "b_tgt": b_tgt,
+        "target_ok": b_sec >= b_tgt,
+        "reserve_ok": all(lg_eps <= -b_req for lg_eps in lg_adv.values()),
+        "b_lat_req": b_req + red["lg_lat_mult"] + cfg["runtime_loss_bits"],
+        "b_df_req": b_req + red["lg_df_mult"],
+        "b_prf_req": b_req,
+        "b_msg_req": math.ceil(cfg["message_bits"] + red["lg_space"] + b_tgt + 2),
     }
 
 

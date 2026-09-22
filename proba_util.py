@@ -1,5 +1,5 @@
 from math import factorial as fac
-from math import log, ceil, erf, sqrt
+from math import ceil, erf, sqrt
 
 
 def gaussian_center_weight(sigma, t):
